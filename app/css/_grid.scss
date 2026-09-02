@@ -1,0 +1,11 @@
+.container {
+	padding: 0.5em 0em 0em 0.5em;
+}
+
+.column {
+	@include span-columns(2.6);
+
+	&:last-child {
+		@include span-columns(1.5);
+	}
+}

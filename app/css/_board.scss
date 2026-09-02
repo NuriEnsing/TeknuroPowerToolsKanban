@@ -1,0 +1,275 @@
+.column {
+  display: inline-block;
+  float: none;
+ 	margin-right: 12px;
+  padding-left: 10px;
+  width: 240px;
+  white-space: normal;
+  &:last-child {
+    float: none;
+    display: inline-block;
+  }
+}
+
+.board-columns {
+  display: inline-block;
+}
+
+.board-columns .column:last-child {
+	width: 240px;
+}
+
+.cards-place {
+	background: #f3f3f3;
+	padding: 10px;
+	padding-right: 6px;
+	border-radius: 3px;
+}
+
+.backlog-sidebar{
+	height: 100%;
+	width: 60px;
+}
+
+.backlog-sidebar .backlog-vertical-title {
+	transform: rotate(270deg);
+	transform-origin: left top;
+	position: relative;
+	top : 58%;
+	left : 10px;
+	width: 200px;
+}
+
+.backlog-sidebar .panel-body {
+	background-color: #eaeaea;
+}
+
+.issue {
+	margin-bottom: 0.7em;
+	border: 1px solid #d6d6d6;
+	background: #eaeaea;
+	margin-right: 0.35em;
+	@include clearfix;
+
+	.issue-header {
+		padding: 4px;
+		background: #d6d6d6;
+	}
+
+	.issue-body {
+		background: #f9f9f9;
+		padding: 10px;
+	}
+
+	&:active {
+		cursor: url("/img/closedhand.cur"), default !important;
+		transform: rotate(4deg);
+	}
+
+	@each $color in $repo-colors {
+		$i: index($repo-colors, $color) - 1;
+		&.color#{$i} .issue-number {
+			background-color: $color;
+		}
+	}
+}
+
+.labels {
+	padding: 0px 0px 8px 10px;
+    background-color: #f9f9f9;
+}
+
+.label {
+	padding: 0px 8px 0px 8px;
+	border-radius: 3px;
+	color: white;
+	font-size: 0.688em;
+	display: inline-block;
+	margin: 4px 4px 0px 0px;
+	line-height: 18px;
+	text-align: center;
+}
+
+.assignee {
+	font-size: 0.85em;
+}
+
+.assignee-avatar, .empty-avatar {
+	width: 30px;
+	border-radius: 3px;
+}
+
+.empty-avatar {
+	height: 30px;
+	background: #fff;
+	padding-left: 10px;
+	line-height: 1.8em;
+	display: inline-block;
+}
+
+.empty-avatar-label,
+.assignee-avatar-label {
+	font-size: 0.7em;
+	color: #535353;
+	margin-left: 7px;
+}
+
+.assignee-avatar-label {
+	display: none;
+}
+
+.assigned .assignee-avatar-label {
+	display: inline-block;
+}
+
+.panel-heading {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+  display: inline-block;
+  width: 100%;
+  white-space: normal;
+}
+
+.panel-body {
+	height: 77vh;
+	overflow-x: hidden;
+	min-height: 400px;
+}
+
+.panel-body.done {
+	overflow: hidden;
+	height: 78vh;
+}
+
+.panel-heading h3 {
+	display: inline;
+}
+
+.panel-heading .issues-count {
+	font-family: "OpenSansSemiBold";
+	font-size: 1.3em;
+}
+
+.panel.panel-default {
+	position: relative;
+}
+
+.panel-heading.done {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	-webkit-transform: translate(-50%, -50%);
+	-moz-transform: translate(-50%, -50%);
+    -ms-transform: translate(-50%, -50%);
+    -o-transform: translate(-50%, -50%);
+	transform: translate(-50%, -50%);
+	text-align: center;
+	font-size: 0.7em;
+
+
+	h3 {
+		color: #aaa;
+		display: block;
+		margin-top: 7px;
+	}
+
+	img {
+		width: 51px;
+		height: 66px;
+		display: block;
+		margin: 0 auto;
+		position: relative;
+
+		&.colored {
+			display: none;
+		}
+
+		&.check-done {
+			display: none;
+		}
+	}
+
+	.issues-count {
+		color: #aaa;
+		display: block;
+	}
+}
+
+.title {
+	margin-bottom: 0.5em;
+	color: #5E5E5E;
+	word-wrap: break-word;
+}
+
+h1 {
+	font-size: 4em;
+	margin: 0em;
+	display: inline;
+	font-family: 'Teko', sans-serif;
+	font-weight: 500;
+	color: #ffffff;
+	line-height: 1.25em;
+	padding: 0.3em
+}
+
+h3 {
+	font-family: "OpenSansSemibold";
+	font-weight: normal;
+	font-size: 1.3em;
+	margin: 0;
+}
+
+.list-group.done {
+	border: 2px dashed #ccc;
+	height: 77vh;
+	margin-top: 2.8em;
+}
+
+.list-group.done .issue {
+	display: none;
+}
+
+.issue-number {
+	font-family: "OpenSansSemibold";
+	top: 2px;
+	position: relative;
+	color: white;
+	font-size: 0.875em;
+	top: -1px;
+	right: -1px;
+	padding: 6px 8px 6px 8px;
+	border-radius: 3px;
+
+	&:hover {
+		color: #535353;
+		text-decoration: underline;
+	}
+}
+
+.empty-avatar.loading {
+	background: url('../img/ajax-loader.gif') no-repeat;
+	background-position: center center;
+	color: rgba(0,0,0,0);
+}
+
+.small-text {
+	font-family: "Open Sans";
+	font-size: 11;
+	font-weight: 600;
+}
+
+.hide-icon , .hide-icon-sidebar {
+  cursor: pointer;
+}
+
+.panel-heading .hide-icon {
+  position: absolute;
+  right: 0.8em;
+  top: 0.9em;
+}
+
+#failConnectionModal #redirectToPublicBtn {
+    margin: auto;
+    display: block;
+    width: 90px;
+}

@@ -1,0 +1,169 @@
+$repo-colors: #ef689e #69b4df #cba50b #808af6 #3cb878;
+
+body {
+  font-family: "OpenSans", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  font-size: 16px !important;
+  min-width: 1010px;
+}
+
+::-webkit-scrollbar {
+   -webkit-appearance: none;
+   width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+   border-radius: 4px;
+   background-color: rgba(0,0,0,.15);
+   -webkit-box-shadow: 0 0 1px rgba(255,255,255,.15);
+}
+
+img[src=""] {
+   display: none;
+}
+
+a {
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover, &:visited {
+    color: #535353;
+    text-decoration: underline;
+  }
+}
+
+header {
+  width: 100%;
+}
+
+#projects {
+  width: 30%;
+  height: 30px;
+  border-color: #bdbdbd;
+}
+
+.btn-success {
+  border: none;
+  background: white;
+  color: #535353;
+  font-size: 0.9em;
+  padding: 2px 5px;
+  border-radius: 3px;
+
+  &:hover {
+    color: #535353;
+    background: #fddd5d;
+    text-decoration: none;
+  }
+}
+
+.btn-default {
+  color: white;
+  background: #999;
+}
+
+.right {
+  float: right;
+}
+
+.modal-dialog select {
+  background: white;
+}
+
+.modal-dialog h4 {
+  font-size: 1.3em;
+  color: #535353;
+}
+
+.modal-dialog label {
+  display: block;
+  margin-top: 0.7em;
+  margin-bottom: 0.2em;
+}
+
+.modal-body {
+  input[type=text] {
+    height: 35px;
+    background: white;
+    padding-left: 0.5em;
+    margin-top: 0.5em;
+  }
+
+  textarea {
+    height: 150px;
+    padding-left: 0.5em;
+    margin-top: 1.5em;
+    padding-top: 0.3em;
+  }
+}
+
+.modal-body input[type=text], .modal-body textarea {
+  border-radius: 3px;
+  border: 1px solid #bdbdbd;
+  width: 100%;
+}
+
+.modal-header .close {
+  float: right;
+  background: none;
+  border: none;
+  font-family: "OpenSansBold";
+  font-size: 1.3em;
+  margin-right: 23px;
+}
+
+.modal-footer button {
+  float: left;
+  border: none;
+  width: 80px;
+  height: 30px;
+  margin-right: 0.5em;
+  border-radius: 2px;
+  margin-left: 0.3em;
+}
+
+.btn-primary {
+  background: #46B17F;
+  color: white;
+}
+
+.not-active {
+  pointer-events: none;
+  text-decoration:none;
+  cursor: default;
+
+  &:hover, &:visited {
+    background: #fff;
+  }
+}
+
+.container {
+  overflow-x: scroll;
+  overflow-y: hidden;
+  width: 100%;
+  white-space: nowrap;
+}
+
+input.missing {
+  border: 1px red solid !important;
+  &:after {
+    content: 'Lero';
+  }
+}
+
+div.required{
+  &:after {
+    color: red;
+    content: '*';
+  }
+
+  .field {
+    width: 95%;
+  }
+}
+
+div.required-message {
+  color: gray;
+  display: none;
+  font-size: 14px;
+  font-style: italic;
+}
