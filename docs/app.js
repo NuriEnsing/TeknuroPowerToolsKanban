@@ -13,6 +13,12 @@
   ];
 
   const statusBanner = document.getElementById('status-banner');
+  const searchInput = document.getElementById('search-input');
+  const filterButtons = document.querySelectorAll('.filter-btn');
+
+  let allIssues = [];
+  let currentFilter = 'all';
+  let currentSearch = '';
 
   function setStatus(type, message, retryCallback) {
     statusBanner.className = 'status-banner ' + type;
@@ -61,22 +67,24 @@
     return '<span class="label" style="background-color: #' + escapeHtml(label.color || 'cccccc') + '; color: ' + textColor + ';">' + escapeHtml(label.name) + '</span>';
   }
 
-  function renderAssignee(issue) {
+  function getAssignee(issue) {
     if (issue.assignee && issue.assignee.login) {
-      return (
-        '<div class="card-footer">' +
-          '<img class="assignee-avatar" src="' + escapeHtml(issue.assignee.avatar_url) + '&s=44" alt="" loading="lazy">' +
-          '<span class="assignee-name">' + escapeHtml(issue.assignee.login) + '</span>' +
-        '</div>'
-      );
+      return issue.assignee;
     }
-
     if (issue.assignees && issue.assignees.length > 0) {
-      const first = issue.assignees[0];
+      return issue.assignees[0];
+    }
+    return null;
+  }
+
+  function renderAssignee(issue) {
+    const assignee = getAssignee(issue);
+
+    if (assignee) {
       return (
         '<div class="card-footer">' +
-          '<img class="assignee-avatar" src="' + escapeHtml(first.avatar_url) + '&s=44" alt="" loading="lazy">' +
-          '<span class="assignee-name">' + escapeHtml(first.login) + '</span>' +
+          '<img class="assignee-avatar" src="' + escapeHtml(assignee.avatar_url) + '&s=48" alt="" loading="lazy">' +
+          '<span class="assignee-name">' + escapeHtml(assignee.login) + '</span>' +
         '</div>'
       );
     }
@@ -92,9 +100,10 @@
   function renderCard(issue) {
     const labelsHtml = (issue.labels || []).map(renderLabel).join('');
     const issueUrl = issue.html_url;
+    const stateClass = issue.state === 'closed' ? 'card-state-closed' : '';
 
     return (
-      '<article class="card">' +
+      '<article class="card ' + stateClass + '">' +
         '<div class="card-header">' +
           '<a class="card-number" href="' + escapeHtml(issueUrl) + '" target="_blank" rel="noopener noreferrer">#' + escapeHtml(String(issue.number)) + '</a>' +
         '</div>' +
@@ -162,6 +171,62 @@
     updateColumnCounts();
   }
 
+  function matchesSearch(issue, query) {
+    if (!query) return true;
+
+    const lowerQuery = query.toLowerCase();
+    const numberMatch = String(issue.number).indexOf(lowerQuery) !== -1;
+    const titleMatch = (issue.title || '').toLowerCase().indexOf(lowerQuery) !== -1;
+    const labelMatch = (issue.labels || []).some(function (label) {
+      return label.name.toLowerCase().indexOf(lowerQuery) !== -1;
+    });
+    const assignee = getAssignee(issue);
+    const assigneeMatch = assignee && assignee.login.toLowerCase().indexOf(lowerQuery) !== -1;
+
+    return numberMatch || titleMatch || labelMatch || assigneeMatch;
+  }
+
+  function applyFilters() {
+    const filtered = allIssues.filter(function (issue) {
+      const stateMatch = currentFilter === 'all' || issue.state === currentFilter;
+      const searchMatch = matchesSearch(issue, currentSearch);
+      return stateMatch && searchMatch;
+    });
+
+    if (allIssues.length > 0 && filtered.length === 0) {
+      renderBoard([]);
+      setStatus('empty', 'No issues match your filters.');
+      return;
+    }
+
+    clearStatus();
+    renderBoard(filtered);
+  }
+
+  function setActiveFilterButton(filter) {
+    filterButtons.forEach(function (btn) {
+      if (btn.getAttribute('data-filter') === filter) {
+        btn.classList.add('is-active');
+      } else {
+        btn.classList.remove('is-active');
+      }
+    });
+  }
+
+  function handleFilterClick(event) {
+    const btn = event.target.closest('.filter-btn');
+    if (!btn) return;
+
+    currentFilter = btn.getAttribute('data-filter');
+    setActiveFilterButton(currentFilter);
+    applyFilters();
+  }
+
+  function handleSearchInput(event) {
+    currentSearch = event.target.value.trim();
+    applyFilters();
+  }
+
   function loadIssues() {
     setStatus('loading', 'Loading issues from GitHub…');
 
@@ -180,25 +245,31 @@
           throw new Error('Unexpected response from GitHub.');
         }
 
-        const issues = data.filter(function (item) {
+        allIssues = data.filter(function (item) {
           return !item.pull_request;
         });
 
-        clearStatus();
-
-        if (issues.length === 0) {
+        if (allIssues.length === 0) {
           setStatus('empty', 'No issues found in this repository.');
-          updateColumnCounts();
+          renderBoard([]);
           return;
         }
 
-        renderBoard(issues);
+        applyFilters();
       })
       .catch(function (error) {
         setStatus('error', error.message || 'Failed to load issues.', function () {
           loadIssues();
         });
       });
+  }
+
+  filterButtons.forEach(function (btn) {
+    btn.addEventListener('click', handleFilterClick);
+  });
+
+  if (searchInput) {
+    searchInput.addEventListener('input', handleSearchInput);
   }
 
   document.addEventListener('DOMContentLoaded', loadIssues);
