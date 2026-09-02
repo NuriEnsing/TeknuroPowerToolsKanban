@@ -2,55 +2,203 @@
   'use strict';
 
   const API_URL = 'https://api.github.com/repos/NuriEnsing/TeknuroPowerToolsKanban/issues?state=all&per_page=100';
-  const NEW_ISSUE_URL = 'https://github.com/NuriEnsing/TeknuroPowerToolsKanban/issues/new';
 
   const COLUMNS = [
-    { label: '0 - Backlog', id: 'col-0-backlog' },
-    { label: '1 - Ready', id: 'col-1-ready' },
-    { label: '2 - Development', id: 'col-2-development' },
-    { label: '3 - Quality Assurance', id: 'col-3-quality-assurance' },
-    { label: '4 - Done', id: 'col-4-done' }
+    { key: 'backlog', label: '0 - Backlog', title: 'Backlog', accent: '#3b82f6', icon: iconBacklog },
+    { key: 'ready', label: '1 - Ready', title: 'Ready', accent: '#f59e0b', icon: iconReady },
+    { key: 'development', label: '2 - Development', title: 'Development', accent: '#ec4899', icon: iconDevelopment },
+    { key: 'qa', label: '3 - Quality Assurance', title: 'Quality Assurance', accent: '#8b5cf6', icon: iconQA },
+    { key: 'done', label: '4 - Done', title: 'Done', accent: '#22c55e', icon: iconDone }
   ];
 
-  const statusBanner = document.getElementById('status-banner');
-  const searchInput = document.getElementById('search-input');
-  const filterButtons = document.querySelectorAll('.filter-btn');
+  const PREFS_KEY = 'teknuroKanbanPrefs';
 
   let allIssues = [];
-  let currentFilter = 'all';
-  let currentSearch = '';
+  let state = { filter: 'all', q: '' };
 
-  function setStatus(type, message, retryCallback) {
-    statusBanner.className = 'status-banner ' + type;
-    let html = '';
+  function $(id) { return document.getElementById(id); }
 
-    if (type === 'loading') {
-      html += '<span class="spinner" aria-hidden="true"></span>';
-    }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
 
-    html += '<span>' + escapeHtml(message) + '</span>';
+  function p2(n) { return String(n).padStart(2, '0'); }
 
-    if (retryCallback) {
-      html += '<button class="retry-btn" type="button">Retry</button>';
-    }
+  /* ===== Icons ===== */
+  function svg(path, size) {
+    size = size || 13;
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + path + '</svg>';
+  }
 
-    statusBanner.innerHTML = html;
+  function iconBacklog() {
+    return svg('<path d="M3.5 13.5H8l1.5 2.5h5L16 13.5h4.5"/><path d="M6.2 5.5h11.6l2.7 8v3.8a2.2 2.2 0 0 1-2.2 2.2H5.7a2.2 2.2 0 0 1-2.2-2.2V13.5Z"/>');
+  }
 
-    const retryBtn = statusBanner.querySelector('.retry-btn');
-    if (retryBtn) {
-      retryBtn.addEventListener('click', retryCallback);
+  function iconReady() {
+    return svg('<circle cx="10.7" cy="10.7" r="6.7"/><path d="M15.6 15.6 21 21"/>');
+  }
+
+  function iconDevelopment() {
+    return svg('<path d="M9.5 3.5v6.2L4.3 18a2.1 2.1 0 0 0 1.8 3.2h11.8a2.1 2.1 0 0 0 1.8-3.2l-5.2-8.3V3.5"/><path d="M8 3.5h8M6.6 14.8h10.8"/>');
+  }
+
+  function iconQA() {
+    return svg('<path d="M12 3.2 20.4 7.8v8.4L12 20.8 3.6 16.2V7.8Z"/><path d="M3.6 7.8 12 12.4l8.4-4.6M12 12.4v8.4"/>');
+  }
+
+  function iconDone() {
+    return svg('<path d="m4.5 12.5 5 5 10-11"/>', 14);
+  }
+
+  function iconDate() {
+    return svg('<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8.5 3v4M15.5 3v4"/>', 12);
+  }
+
+  function iconTag() {
+    return svg('<path d="M20.5 13.5 13 21a2.1 2.1 0 0 1-3 0L3 14V4.5h9.5l8 8a2.1 2.1 0 0 1 0 1Z"/><path d="M7.5 8.5h.01"/>', 11);
+  }
+
+  function iconNone() {
+    return svg('<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M8 12h8"/>', 20);
+  }
+
+  /* ===== Theme ===== */
+  function initTheme() {
+    const btn = $('theme');
+    if (!btn) return;
+
+    const apply = function () {
+      const theme = document.documentElement.getAttribute('data-theme') || 'light';
+      btn.setAttribute('aria-pressed', theme === 'dark');
+    };
+
+    btn.addEventListener('click', function () {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try {
+        const saved = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
+        saved.theme = next;
+        localStorage.setItem(PREFS_KEY, JSON.stringify(saved));
+      } catch (e) {}
+      apply();
+    });
+
+    apply();
+  }
+
+  /* ===== Search ===== */
+  function initSearch() {
+    const input = $('q');
+    const clear = $('clear');
+    const box = $('search');
+    if (!input) return;
+
+    const update = function () {
+      state.q = input.value;
+      if (box) box.classList.toggle('filled', !!input.value);
+      applyFilters();
+    };
+
+    input.addEventListener('input', update);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        input.value = '';
+        update();
+        input.blur();
+      }
+    });
+
+    if (clear) {
+      clear.addEventListener('click', function () {
+        input.value = '';
+        update();
+        input.focus();
+      });
     }
   }
 
-  function clearStatus() {
-    statusBanner.className = 'status-banner';
-    statusBanner.innerHTML = '';
+  /* ===== Tabs ===== */
+  function initTabs() {
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        tabs.forEach(function (t) { t.classList.remove('is-active'); });
+        tab.classList.add('is-active');
+        state.filter = tab.getAttribute('data-filter');
+        applyFilters();
+      });
+    });
   }
 
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+  /* ===== Filter logic ===== */
+  function matchesSearch(issue, query) {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    const labelNames = (issue.labels || []).map(function (l) { return l.name; }).join(' ');
+    const assignee = getAssignee(issue);
+    const haystack = [
+      String(issue.number),
+      issue.title || '',
+      issue.body || '',
+      labelNames,
+      assignee ? assignee.login : ''
+    ].join(' ').toLowerCase();
+    return haystack.indexOf(q) !== -1;
+  }
+
+  function applyFilters() {
+    const filtered = allIssues.filter(function (issue) {
+      const stateMatch = state.filter === 'all' || issue.state === state.filter;
+      return stateMatch && matchesSearch(issue, state.q);
+    });
+
+    updateTabCounts();
+
+    if (allIssues.length > 0 && filtered.length === 0) {
+      renderBoard([]);
+      showBanner('empty-banner', 'No issues match your filters.');
+      return;
+    }
+
+    hideBanners();
+    renderBoard(filtered);
+  }
+
+  function updateTabCounts() {
+    const open = allIssues.filter(function (i) { return i.state === 'open'; }).length;
+    const closed = allIssues.filter(function (i) { return i.state === 'closed'; }).length;
+    const total = allIssues.length;
+
+    const allEl = $('tab-count-all');
+    const openEl = $('tab-count-open');
+    const closedEl = $('tab-count-closed');
+
+    if (allEl) allEl.textContent = String(total);
+    if (openEl) openEl.textContent = String(open);
+    if (closedEl) closedEl.textContent = String(closed);
+  }
+
+  /* ===== Column logic ===== */
+  function determineColumn(issue) {
+    if (issue.state === 'closed') return 'done';
+
+    const labelNames = (issue.labels || []).map(function (l) { return l.name; });
+    for (let i = 0; i < COLUMNS.length; i++) {
+      if (labelNames.indexOf(COLUMNS[i].label) !== -1) {
+        return COLUMNS[i].key;
+      }
+    }
+    return 'backlog';
+  }
+
+  /* ===== Rendering ===== */
+  function getAssignee(issue) {
+    if (issue.assignee && issue.assignee.login) return issue.assignee;
+    if (issue.assignees && issue.assignees.length > 0) return issue.assignees[0];
+    return null;
   }
 
   function getTextColorForBackground(hexColor) {
@@ -64,171 +212,177 @@
 
   function renderLabel(label) {
     const textColor = getTextColorForBackground(label.color || 'cccccc');
-    return '<span class="label" style="background-color: #' + escapeHtml(label.color || 'cccccc') + '; color: ' + textColor + ';">' + escapeHtml(label.name) + '</span>';
+    return '<span class="label" style="background-color: #' + esc(label.color || 'cccccc') + '; color: ' + textColor + ';">' + esc(label.name) + '</span>';
   }
 
-  function getAssignee(issue) {
-    if (issue.assignee && issue.assignee.login) {
-      return issue.assignee;
-    }
-    if (issue.assignees && issue.assignees.length > 0) {
-      return issue.assignees[0];
-    }
-    return null;
+  function highlight(text) {
+    const q = state.q.trim();
+    if (!q) return esc(text);
+    const t = esc(text);
+    const lower = t.toLowerCase();
+    const idx = lower.indexOf(esc(q).toLowerCase());
+    if (idx === -1) return t;
+    const len = esc(q).length;
+    return t.slice(0, idx) + '<mark>' + t.slice(idx, idx + len) + '</mark>' + t.slice(idx + len);
   }
 
-  function renderAssignee(issue) {
-    const assignee = getAssignee(issue);
-
-    if (assignee) {
-      return (
-        '<div class="card-footer">' +
-          '<img class="assignee-avatar" src="' + escapeHtml(assignee.avatar_url) + '&s=48" alt="" loading="lazy">' +
-          '<span class="assignee-name">' + escapeHtml(assignee.login) + '</span>' +
-        '</div>'
-      );
-    }
-
-    return (
-      '<div class="card-footer">' +
-        '<span class="assignee-empty" aria-hidden="true">?</span>' +
-        '<span class="assignee-name">Unassigned</span>' +
-      '</div>'
-    );
+  function formatDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
   }
 
-  function renderCard(issue) {
-    const labelsHtml = (issue.labels || []).map(renderLabel).join('');
+  function renderCard(issue, index) {
+    const columnKey = determineColumn(issue);
+    const column = COLUMNS.find(function (c) { return c.key === columnKey; });
+    const accent = column ? column.accent : '#3b82f6';
     const issueUrl = issue.html_url;
-    const stateClass = issue.state === 'closed' ? 'card-state-closed' : '';
+    const labelsHtml = (issue.labels || []).map(renderLabel).join('');
+    const assignee = getAssignee(issue);
+    const created = formatDate(issue.created_at);
+
+    let foot = '';
+    if (created) {
+      foot += '<span class="date">' + iconDate() + '<span>' + esc(created) + '</span></span>';
+    }
+    if (assignee) {
+      foot += '<span class="assignee">' +
+        '<img src="' + esc(assignee.avatar_url) + '&s=32" alt="" loading="lazy">' +
+        '<span>' + esc(assignee.login) + '</span>' +
+      '</span>';
+    } else {
+      foot += '<span class="assignee">' + iconTag() + '<span>Unassigned</span></span>';
+    }
 
     return (
-      '<article class="card ' + stateClass + '">' +
-        '<div class="card-header">' +
-          '<a class="card-number" href="' + escapeHtml(issueUrl) + '" target="_blank" rel="noopener noreferrer">#' + escapeHtml(String(issue.number)) + '</a>' +
+      '<article class="card" style="animation-delay:' + Math.min(index * 60, 480) + 'ms">' +
+        '<div class="accent" style="background:' + accent + '"></div>' +
+        '<div class="body">' +
+          '<a class="card-number" href="' + esc(issueUrl) + '" target="_blank" rel="noopener noreferrer">#' + esc(String(issue.number)) + '</a>' +
+          '<h3><a href="' + esc(issueUrl) + '" target="_blank" rel="noopener noreferrer">' + highlight(issue.title || '(No title)') + '</a></h3>' +
+          (labelsHtml ? '<div class="labels">' + labelsHtml + '</div>' : '') +
+          '<div class="foot">' + foot + '</div>' +
         '</div>' +
-        '<a class="card-title" href="' + escapeHtml(issueUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(issue.title || '(No title)') + '</a>' +
-        (labelsHtml ? '<div class="card-labels">' + labelsHtml + '</div>' : '') +
-        renderAssignee(issue) +
       '</article>'
     );
   }
 
-  function determineColumn(issue) {
-    if (issue.state === 'closed') {
-      return '4 - Done';
-    }
-
-    const labelNames = (issue.labels || []).map(function (label) { return label.name; });
-
-    for (let i = 0; i < COLUMNS.length; i++) {
-      if (labelNames.indexOf(COLUMNS[i].label) !== -1) {
-        return COLUMNS[i].label;
-      }
-    }
-
-    return '0 - Backlog';
-  }
-
-  function updateColumnCounts() {
-    COLUMNS.forEach(function (column) {
-      const container = document.getElementById(column.id);
-      const count = container.querySelectorAll('.card').length;
-      const header = container.closest('.column').querySelector('.column-count');
-      header.textContent = String(count);
-      header.setAttribute('aria-label', count + ' issue' + (count === 1 ? '' : 's'));
-
-      const existingEmpty = container.querySelector('.column-empty');
-      if (count === 0) {
-        if (!existingEmpty) {
-          const empty = document.createElement('div');
-          empty.className = 'column-empty';
-          empty.textContent = 'No issues';
-          container.appendChild(empty);
-        }
-      } else if (existingEmpty) {
-        existingEmpty.remove();
-      }
-    });
+  function renderColumn(column) {
+    return (
+      '<article class="col" data-column="' + esc(column.label) + '">' +
+        '<div class="colhead">' +
+          '<div class="bar" style="background:' + column.accent + '"></div>' +
+          '<div class="row">' +
+            '<div style="display:flex;align-items:center;gap:8px;min-width:0">' +
+              '<span class="cicon" style="color:' + column.accent + ';background:' + column.accent + '15">' + column.icon() + '</span>' +
+              '<h2>' + esc(column.title) + '</h2>' +
+            '</div>' +
+            '<span class="count" id="count-' + column.key + '">0</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="stack" id="col-' + column.key + '"></div>' +
+      '</article>'
+    );
   }
 
   function renderBoard(issues) {
-    COLUMNS.forEach(function (column) {
-      document.getElementById(column.id).innerHTML = '';
-    });
+    const board = $('board');
+    if (!board) return;
 
-    issues.forEach(function (issue) {
-      const columnLabel = determineColumn(issue);
-      const column = COLUMNS.find(function (c) { return c.label === columnLabel; });
-      if (!column) return;
-
-      const container = document.getElementById(column.id);
-      const wrapper = document.createElement('div');
-      wrapper.innerHTML = renderCard(issue);
-      container.appendChild(wrapper.firstElementChild);
-    });
-
-    updateColumnCounts();
-  }
-
-  function matchesSearch(issue, query) {
-    if (!query) return true;
-
-    const lowerQuery = query.toLowerCase();
-    const numberMatch = String(issue.number).indexOf(lowerQuery) !== -1;
-    const titleMatch = (issue.title || '').toLowerCase().indexOf(lowerQuery) !== -1;
-    const labelMatch = (issue.labels || []).some(function (label) {
-      return label.name.toLowerCase().indexOf(lowerQuery) !== -1;
-    });
-    const assignee = getAssignee(issue);
-    const assigneeMatch = assignee && assignee.login.toLowerCase().indexOf(lowerQuery) !== -1;
-
-    return numberMatch || titleMatch || labelMatch || assigneeMatch;
-  }
-
-  function applyFilters() {
-    const filtered = allIssues.filter(function (issue) {
-      const stateMatch = currentFilter === 'all' || issue.state === currentFilter;
-      const searchMatch = matchesSearch(issue, currentSearch);
-      return stateMatch && searchMatch;
-    });
-
-    if (allIssues.length > 0 && filtered.length === 0) {
-      renderBoard([]);
-      setStatus('empty', 'No issues match your filters.');
-      return;
+    if (board.innerHTML === '') {
+      board.innerHTML = COLUMNS.map(renderColumn).join('');
     }
 
-    clearStatus();
-    renderBoard(filtered);
-  }
+    COLUMNS.forEach(function (column) {
+      const stack = $('col-' + column.key);
+      if (stack) stack.innerHTML = '';
+    });
 
-  function setActiveFilterButton(filter) {
-    filterButtons.forEach(function (btn) {
-      if (btn.getAttribute('data-filter') === filter) {
-        btn.classList.add('is-active');
-      } else {
-        btn.classList.remove('is-active');
+    issues.forEach(function (issue, index) {
+      const columnKey = determineColumn(issue);
+      const stack = $('col-' + columnKey);
+      if (!stack) return;
+
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = renderCard(issue, index);
+      stack.appendChild(wrapper.firstElementChild);
+    });
+
+    COLUMNS.forEach(function (column) {
+      const stack = $('col-' + column.key);
+      const countEl = $('count-' + column.key);
+      if (!stack || !countEl) return;
+
+      const count = stack.querySelectorAll('.card').length;
+      countEl.textContent = String(count);
+
+      const existing = stack.querySelector('.empty');
+      if (count === 0) {
+        if (!existing) {
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.innerHTML = iconNone() + '<span>No issues</span>';
+          stack.appendChild(empty);
+        }
+      } else if (existing) {
+        existing.remove();
       }
     });
   }
 
-  function handleFilterClick(event) {
-    const btn = event.target.closest('.filter-btn');
-    if (!btn) return;
+  /* ===== Banners ===== */
+  function showBanner(className, message) {
+    const board = $('board');
+    if (!board) return;
 
-    currentFilter = btn.getAttribute('data-filter');
-    setActiveFilterButton(currentFilter);
-    applyFilters();
+    hideBanners();
+
+    const banner = document.createElement('div');
+    banner.className = className;
+    banner.id = 'status-banner';
+    banner.setAttribute('role', 'status');
+    banner.setAttribute('aria-live', 'polite');
+
+    let html = '';
+    if (className === 'loading-banner') {
+      html += '<span class="spinner" aria-hidden="true"></span>';
+    }
+    html += '<span>' + esc(message) + '</span>';
+
+    if (className === 'error-banner') {
+      html += '<button class="retry-btn" type="button">Retry</button>';
+    }
+
+    banner.innerHTML = html;
+    board.parentNode.insertBefore(banner, board);
+
+    const retry = banner.querySelector('.retry-btn');
+    if (retry) {
+      retry.addEventListener('click', function () {
+        loadIssues();
+      });
+    }
   }
 
-  function handleSearchInput(event) {
-    currentSearch = event.target.value.trim();
-    applyFilters();
+  function hideBanners() {
+    const existing = $('status-banner');
+    if (existing) existing.remove();
+  }
+
+  /* ===== Data loading ===== */
+  function updateStamp() {
+    const stamp = $('stamp');
+    if (!stamp) return;
+    const d = new Date();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    stamp.textContent = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() + ' · ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+    stamp.title = 'Last loaded at ' + d.toISOString();
   }
 
   function loadIssues() {
-    setStatus('loading', 'Loading issues from GitHub…');
+    showBanner('loading-banner', 'Loading issues from GitHub…');
 
     fetch(API_URL)
       .then(function (response) {
@@ -249,28 +403,29 @@
           return !item.pull_request;
         });
 
+        updateStamp();
+
         if (allIssues.length === 0) {
-          setStatus('empty', 'No issues found in this repository.');
           renderBoard([]);
+          showBanner('empty-banner', 'No issues found in this repository.');
+          updateTabCounts();
           return;
         }
 
         applyFilters();
       })
       .catch(function (error) {
-        setStatus('error', error.message || 'Failed to load issues.', function () {
-          loadIssues();
-        });
+        showBanner('error-banner', error.message || 'Failed to load issues.');
       });
   }
 
-  filterButtons.forEach(function (btn) {
-    btn.addEventListener('click', handleFilterClick);
-  });
-
-  if (searchInput) {
-    searchInput.addEventListener('input', handleSearchInput);
+  /* ===== Init ===== */
+  function init() {
+    initTheme();
+    initTabs();
+    initSearch();
+    loadIssues();
   }
 
-  document.addEventListener('DOMContentLoaded', loadIssues);
+  document.addEventListener('DOMContentLoaded', init);
 })();
