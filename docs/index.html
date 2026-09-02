@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Teknuro PowerTools Kanban board backed by GitHub Issues.">
+  <title>Teknuro PowerTools Kanban</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-content">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">T</span>
+        <h1>Teknuro <span class="brand-sub">PowerTools Kanban</span></h1>
+      </div>
+      <a
+        href="https://github.com/NuriEnsing/TeknuroPowerToolsKanban/issues/new"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="create-issue-btn"
+      >
+        + Create issue
+      </a>
+    </div>
+  </header>
+
+  <main class="board-container">
+    <div id="status-banner" class="status-banner" role="status" aria-live="polite"></div>
+
+    <section class="board" id="board">
+      <article class="column" data-column="0 - Backlog">
+        <header class="column-header">
+          <h2>0 - Backlog</h2>
+          <span class="column-count" aria-label="0 issues">0</span>
+        </header>
+        <div class="column-body" id="col-0-backlog"></div>
+      </article>
+
+      <article class="column" data-column="1 - Ready">
+        <header class="column-header">
+          <h2>1 - Ready</h2>
+          <span class="column-count" aria-label="0 issues">0</span>
+        </header>
+        <div class="column-body" id="col-1-ready"></div>
+      </article>
+
+      <article class="column" data-column="2 - Development">
+        <header class="column-header">
+          <h2>2 - Development</h2>
+          <span class="column-count" aria-label="0 issues">0</span>
+        </header>
+        <div class="column-body" id="col-2-development"></div>
+      </article>
+
+      <article class="column" data-column="3 - Quality Assurance">
+        <header class="column-header">
+          <h2>3 - Quality Assurance</h2>
+          <span class="column-count" aria-label="0 issues">0</span>
+        </header>
+        <div class="column-body" id="col-3-quality-assurance"></div>
+      </article>
+
+      <article class="column" data-column="4 - Done">
+        <header class="column-header column-header-done">
+          <h2>4 - Done</h2>
+          <span class="column-count" aria-label="0 issues">0</span>
+        </header>
+        <div class="column-body" id="col-4-done"></div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Backed by <a href="https://github.com/NuriEnsing/TeknuroPowerToolsKanban/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a>. No authentication required.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
